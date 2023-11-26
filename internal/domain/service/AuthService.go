@@ -8,7 +8,7 @@ import (
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/infra/database"
 )
 
-func Register(req *request.RegisterRequest) (bool, []request.ErrorResponse) {
+func Register(req *request.RegisterRequest) (entities.User, []request.ErrorResponse) {
 	validate := validator.New()
 	errs := validate.Struct(req)
 	validationErrors := []request.ErrorResponse{}
@@ -20,7 +20,7 @@ func Register(req *request.RegisterRequest) (bool, []request.ErrorResponse) {
 			elem.Value = err.Value()       // Export field value
 			validationErrors = append(validationErrors, elem)
 		}
-		return false, validationErrors
+		return entities.User{}, validationErrors
 	}
 
 	//CHeck email unique
@@ -33,13 +33,14 @@ func Register(req *request.RegisterRequest) (bool, []request.ErrorResponse) {
 		elem.Tag = "Email already used"
 		elem.Value = ""
 		validationErrors = append(validationErrors, elem)
-		return false, validationErrors
+		return entities.User{}, validationErrors
 	}
 
 	repo := repository.NewAuthRepository(&repository.AuthMysql{})
 
-	if _, err := repo.AuthRepository.Register(req); err != nil {
-		return false, nil
+	NewUser, err := repo.AuthRepository.Register(req)
+	if err != nil {
+		return entities.User{}, nil
 	}
-	return true, validationErrors
+	return NewUser, nil
 }

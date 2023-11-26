@@ -9,7 +9,6 @@ import (
 
 func GenerateToken(claims *jwt.MapClaims) (string, error) {
 	SecretKey := config.ConfigJwt.Key
-	fmt.Println(SecretKey)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	webToken, err := token.SignedString([]byte(SecretKey))
 

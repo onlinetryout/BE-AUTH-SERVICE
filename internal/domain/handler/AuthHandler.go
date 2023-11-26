@@ -11,7 +11,6 @@ import (
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/service"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/infra/database"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/pkg/utils"
-	"log"
 )
 
 func (r *AuthHandler) Register(c *fiber.Ctx) error {
@@ -20,24 +19,26 @@ func (r *AuthHandler) Register(c *fiber.Ctx) error {
 	user := new(request.RegisterRequest)
 	if err := c.BodyParser(user); err != nil {
 		// Handle parsing error
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Error parsing request body",
+		return c.Status(fiber.StatusBadRequest).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Error Parsing Request Data",
 		})
 	}
 
-	success, validationErrors := service.Register(user)
-	if !success {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Validation Error",
-			"errors":  validationErrors,
+	newUser, validationErrors := service.Register(user)
+
+	if validationErrors != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationErrors,
 		})
 	}
 
-	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Register successfully",
+	return c.JSON(response.SuccessResponse{
+		Success: true,
+		Message: "Register user succesfully",
+		Data:    newUser,
 	})
 }
 
@@ -57,27 +58,27 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 			validationErrors = append(validationErrors, elem)
 		}
 
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "Validation error",
-			"error":   validationErrors,
+		return c.Status(fiber.StatusBadRequest).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationErrors,
 		})
 	}
 	var user entities.User
 	//Check Email
 	if err := database.DB.Where("email", LoginRequest.Email).First(&user).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  "failed",
-			"message": "email not found",
+		return c.Status(fiber.StatusNotFound).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Email Not Found",
 		})
 	}
 	//Check Password
 	isValid := utils.CheckPasswordHash(LoginRequest.Password, user.Password)
 
 	if !isValid {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  "failed",
-			"message": "wrong password",
+		return c.Status(fiber.StatusNotFound).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Wrong Password",
 		})
 	}
 
@@ -90,11 +91,10 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 
 	token, err := utils.GenerateToken(&claims)
 	if err != nil {
-		log.Println(err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "failed",
-			"message": "Internal server error",
-			"error":   err,
+		return c.Status(fiber.StatusInternalServerError).JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Internal server error",
+			Errors:  err,
 		})
 	}
 
@@ -111,11 +111,11 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 	output := response.LoginResponse{
 		TokenType: "Bearer",
 		Token:     token,
-		User:      UserResponse,
+		Data:      UserResponse,
 	}
-	return c.JSON(fiber.Map{
-		"status":  "success",
-		"message": "Login success",
-		"data":    output,
+	return c.JSON(response.SuccessResponse{
+		Success: true,
+		Message: "Login Success",
+		Data:    output,
 	})
 }
