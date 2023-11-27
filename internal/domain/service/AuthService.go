@@ -5,7 +5,10 @@ import (
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/entities"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/repository"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
+	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/response"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/infra/database"
+	"github.com/onlinetryout/BE-AUTH-SERVICE/pkg/utils"
+	"log"
 )
 
 func Register(req *request.RegisterRequest) (entities.User, []request.ErrorResponse) {
@@ -25,8 +28,7 @@ func Register(req *request.RegisterRequest) (entities.User, []request.ErrorRespo
 
 	//CHeck email unique
 	var userCount int64
-	query := database.DB.Model(&entities.User{}).Where("email", req.Email)
-	query.Count(&userCount)
+	database.DB.Model(&entities.User{}).Where("email", req.Email).Count(&userCount)
 	if userCount > 0 {
 		var elem request.ErrorResponse
 		elem.FailedField = "Email"
@@ -43,4 +45,61 @@ func Register(req *request.RegisterRequest) (entities.User, []request.ErrorRespo
 		return entities.User{}, nil
 	}
 	return NewUser, nil
+}
+
+func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
+	validate := validator.New()
+	errs := validate.Struct(req)
+	validationErrors := []request.ErrorResponse{}
+	if errs != nil {
+		for _, err := range errs.(validator.ValidationErrors) {
+			var elem request.ErrorResponse
+			elem.FailedField = err.Field() // Export struct field name
+			elem.Tag = err.Tag()           // Export struct tag
+			elem.Value = err.Value()       // Export field value
+			validationErrors = append(validationErrors, elem)
+		}
+		return "", validationErrors
+	}
+
+	//Validation email and password
+	var user entities.User
+	//email checking
+	if err := database.DB.Where("email", req.Email).First(&user).Error; err != nil {
+		var elem request.ErrorResponse
+		elem.FailedField = "Email"
+		elem.Tag = "Email not found"
+		elem.Value = ""
+		validationErrors = append(validationErrors, elem)
+		return "", validationErrors
+	}
+	//CHeck Password
+	if isValid := utils.CheckPasswordHash(req.Password, user.Password); !isValid {
+		var elem request.ErrorResponse
+		elem.FailedField = "Password"
+		elem.Tag = "Wrong Password"
+		elem.Value = ""
+		validationErrors = append(validationErrors, elem)
+		return "", validationErrors
+	}
+	repo := repository.NewAuthRepository(&repository.AuthMysql{})
+	token, err := repo.AuthRepository.Login(user)
+	if err != nil {
+		log.Println(err)
+	}
+	userResponse := response.UserResponse{
+		Uuid:      user.Uuid,
+		Name:      user.Name,
+		Email:     user.Email,
+		Address:   user.Address,
+		Phone:     user.Phone,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.CreatedAt,
+	}
+	output := response.LoginResponse{
+		TokenType: "Bearer",
+		Token:     token,
+		Data:      userResponse,
+	}
+	return output, nil
 }

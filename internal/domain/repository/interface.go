@@ -7,6 +7,7 @@ import (
 
 type AuthInterface interface {
 	Register(request *request.RegisterRequest) (entities.User, error)
+	Login(user entities.User) (string, error)
 }
 
 type AuthRepository struct {
