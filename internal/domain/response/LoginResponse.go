@@ -6,9 +6,9 @@ import (
 )
 
 type LoginResponse struct {
-	TokenType string
-	Token     string
-	User      UserResponse
+	TokenType string       `json:"token_type"`
+	Token     string       `json:"token"`
+	Data      UserResponse `json:"data"`
 }
 
 type UserResponse struct {
