@@ -39,8 +39,8 @@ func (a AuthMysql) Register(request *request.RegisterRequest) (entities.User, er
 	return newUser, nil
 }
 
-func (a AuthMysql) GetUserByEmail(user *entities.User, req *request.LoginRequest) error {
-	err := database.DB.Where("email", req.Email).First(&user).Error
+func (a AuthMysql) GetUserByEmail(user *entities.User, email string) error {
+	err := database.DB.Where("email", email).First(&user).Error
 	if err != nil {
 		return err
 	}
