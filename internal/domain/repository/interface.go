@@ -7,7 +7,7 @@ import (
 
 type AuthInterface interface {
 	Register(request *request.RegisterRequest) (entities.User, error)
-	GetUserByEmail(user *entities.User, req *request.LoginRequest) error
+	GetUserByEmail(user *entities.User, email string) error
 }
 
 type AuthRepository struct {

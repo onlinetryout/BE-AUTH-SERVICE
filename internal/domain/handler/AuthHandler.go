@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/response"
@@ -20,35 +19,15 @@ func (r *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	newUser, validationErrors := service.Register(user)
+	output := service.Register(user)
 
-	if validationErrors != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(response.ErrorResponse{
-			Success: false,
-			Message: "Validation Error",
-			Errors:  validationErrors,
-		})
-	}
-
-	return c.JSON(response.SuccessResponse{
-		Success: true,
-		Message: "Register user succesfully",
-		Data:    newUser,
-	})
+	return c.JSON(output)
 }
 
 func (r *AuthHandler) Login(c *fiber.Ctx) error {
 	LoginRequest := new(request.LoginRequest)
 	c.BodyParser(LoginRequest)
-	output, errValidation := service.Login(LoginRequest)
-
-	if errValidation != nil {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(response.ErrorResponse{
-			Success: false,
-			Message: "Validation Error",
-			Errors:  errValidation,
-		})
-	}
+	output := service.Login(LoginRequest)
 
 	return c.JSON(output)
 }
@@ -56,12 +35,7 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 func (r *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
 	req := new(request.ForgotPassword)
 	c.BodyParser(req)
-	err := service.PostForgotPassword(req)
-	fmt.Println(err)
+	output := service.PostForgotPassword(req)
 
-	return c.JSON(response.SuccessResponse{
-		Success: true,
-		Message: "Forgot Password Email Sent",
-		Data:    nil,
-	})
+	return c.JSON(output)
 }

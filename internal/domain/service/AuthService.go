@@ -1,81 +1,86 @@
 package service
 
 import (
-	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/config"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/entities"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/repository"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/response"
-	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/infra/database"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/pkg/utils"
 	"log"
 )
 
-func Register(req *request.RegisterRequest) (entities.User, []request.ErrorResponse) {
-	validate := validator.New()
-	errs := validate.Struct(req)
-	validationErrors := []request.ErrorResponse{}
-	if errs != nil {
-		for _, err := range errs.(validator.ValidationErrors) {
-			var elem request.ErrorResponse
-			elem.FailedField = err.Field() // Export struct field name
-			elem.Tag = err.Tag()           // Export struct tag
-			elem.Value = err.Value()       // Export field value
-			validationErrors = append(validationErrors, elem)
+func Register(req *request.RegisterRequest) interface{} {
+	repo := repository.NewAuthRepository(&repository.AuthMysql{})
+	pass, validationMessage := utils.Validate(req)
+	if !pass {
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationMessage,
 		}
-		return entities.User{}, validationErrors
+		return res
 	}
 
 	//CHeck email unique
-	var userCount int64
-	database.DB.Model(&entities.User{}).Where("email", req.Email).Count(&userCount)
-	if userCount > 0 {
+	var validationErrors []request.ErrorResponse
+	var user entities.User
+	err := repo.AuthRepository.GetUserByEmail(&user, req.Email)
+	if err != nil {
 		var elem request.ErrorResponse
 		elem.FailedField = "Email"
 		elem.Tag = "Email already used"
 		elem.Value = ""
 		validationErrors = append(validationErrors, elem)
-		return entities.User{}, validationErrors
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationMessage,
+		}
+		return res
 	}
-
-	repo := repository.NewAuthRepository(&repository.AuthMysql{})
 
 	NewUser, err := repo.AuthRepository.Register(req)
 	if err != nil {
-		return entities.User{}, nil
+		return nil
 	}
-	return NewUser, nil
+	return response.SuccessResponse{
+		Success: true,
+		Message: "Register success",
+		Data:    NewUser,
+	}
 }
 
-func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
+func Login(req *request.LoginRequest) interface{} {
 	repo := repository.NewAuthRepository(&repository.AuthMysql{})
 
-	validate := validator.New()
-	errs := validate.Struct(req)
-	validationErrors := []request.ErrorResponse{}
-	if errs != nil {
-		for _, err := range errs.(validator.ValidationErrors) {
-			var elem request.ErrorResponse
-			elem.FailedField = err.Field() // Export struct field name
-			elem.Tag = err.Tag()           // Export struct tag
-			elem.Value = err.Value()       // Export field value
-			validationErrors = append(validationErrors, elem)
+	isPass, validationMessage := utils.Validate(req)
+	if !isPass {
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationMessage,
 		}
-		return "", validationErrors
+		return res
 	}
 
 	//Validation email and password
 	var user entities.User
+	var validationErrors []request.ErrorResponse
 	//email checking
-	if err := repo.AuthRepository.GetUserByEmail(&user, req); err != nil {
+	if err := repo.AuthRepository.GetUserByEmail(&user, req.Email); err != nil {
 		var elem request.ErrorResponse
 		elem.FailedField = "Email"
 		elem.Tag = "Email not found"
 		elem.Value = ""
 		validationErrors = append(validationErrors, elem)
-		return "", validationErrors
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationErrors,
+		}
+		return res
 	}
 	//Check Password
 	if isValid := utils.CheckPasswordHash(req.Password, user.Password); !isValid {
@@ -84,7 +89,12 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 		elem.Tag = "Wrong Password"
 		elem.Value = ""
 		validationErrors = append(validationErrors, elem)
-		return "", validationErrors
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationErrors,
+		}
+		return res
 	}
 
 	claims := jwt.MapClaims{}
@@ -111,9 +121,18 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 		Token:     token,
 		Data:      userResponse,
 	}
-	return output, nil
+	return output
 }
 
-func PostForgotPassword(req *request.ForgotPassword) error {
+func PostForgotPassword(req *request.ForgotPassword) interface{} {
+	pass, validationMessage := utils.Validate(req)
+	if !pass {
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationMessage,
+		}
+		return res
+	}
 	return nil
 }
