@@ -2,6 +2,8 @@ package service
 
 import (
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/config"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/entities"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/repository"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
@@ -48,6 +50,8 @@ func Register(req *request.RegisterRequest) (entities.User, []request.ErrorRespo
 }
 
 func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
+	repo := repository.NewAuthRepository(&repository.AuthMysql{})
+
 	validate := validator.New()
 	errs := validate.Struct(req)
 	validationErrors := []request.ErrorResponse{}
@@ -65,7 +69,7 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 	//Validation email and password
 	var user entities.User
 	//email checking
-	if err := database.DB.Where("email", req.Email).First(&user).Error; err != nil {
+	if err := repo.AuthRepository.GetUserByEmail(&user, req); err != nil {
 		var elem request.ErrorResponse
 		elem.FailedField = "Email"
 		elem.Tag = "Email not found"
@@ -73,7 +77,7 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 		validationErrors = append(validationErrors, elem)
 		return "", validationErrors
 	}
-	//CHeck Password
+	//Check Password
 	if isValid := utils.CheckPasswordHash(req.Password, user.Password); !isValid {
 		var elem request.ErrorResponse
 		elem.FailedField = "Password"
@@ -82,8 +86,14 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 		validationErrors = append(validationErrors, elem)
 		return "", validationErrors
 	}
-	repo := repository.NewAuthRepository(&repository.AuthMysql{})
-	token, err := repo.AuthRepository.Login(user)
+
+	claims := jwt.MapClaims{}
+	claims["id"] = user.ID
+	claims["name"] = user.Name
+	claims["email"] = user.Email
+	claims["exp"] = config.ConfigJwt.Expired.Unix()
+	token, err := utils.GenerateToken(&claims)
+
 	if err != nil {
 		log.Println(err)
 	}
@@ -102,4 +112,8 @@ func Login(req *request.LoginRequest) (interface{}, []request.ErrorResponse) {
 		Data:      userResponse,
 	}
 	return output, nil
+}
+
+func PostForgotPassword(req *request.ForgotPassword) error {
+	return nil
 }

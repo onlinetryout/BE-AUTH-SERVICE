@@ -1,9 +1,7 @@
 package repository
 
 import (
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/config"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/entities"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/infra/database"
@@ -41,16 +39,10 @@ func (a AuthMysql) Register(request *request.RegisterRequest) (entities.User, er
 	return newUser, nil
 }
 
-func (a AuthMysql) Login(user entities.User) (string, error) {
-	claims := jwt.MapClaims{}
-	claims["id"] = user.ID
-	claims["name"] = user.Name
-	claims["email"] = user.Email
-	claims["exp"] = config.ConfigJwt.Expired.Unix()
-	token, err := utils.GenerateToken(&claims)
+func (a AuthMysql) GetUserByEmail(user *entities.User, req *request.LoginRequest) error {
+	err := database.DB.Where("email", req.Email).First(&user).Error
 	if err != nil {
-		log.Println("error on generate token", err)
+		return err
 	}
-
-	return token, nil
+	return nil
 }

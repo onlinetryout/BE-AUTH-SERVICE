@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/request"
 	"github.com/onlinetryout/BE-AUTH-SERVICE/internal/domain/response"
@@ -50,4 +51,17 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(output)
+}
+
+func (r *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	req := new(request.ForgotPassword)
+	c.BodyParser(req)
+	err := service.PostForgotPassword(req)
+	fmt.Println(err)
+
+	return c.JSON(response.SuccessResponse{
+		Success: true,
+		Message: "Forgot Password Email Sent",
+		Data:    nil,
+	})
 }
