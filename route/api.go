@@ -14,4 +14,5 @@ func RouteInit(route *fiber.App) {
 	v1.Post("/register", AuthHandler.Register)
 	v1.Post("/login", AuthHandler.Login)
 	v1.Post("/forgot-password", AuthHandler.ForgotPassword)
+	v1.Post("/reset-password", AuthHandler.ResetPassword)
 }

@@ -20,9 +20,24 @@ type Jwt struct {
 	Expired time.Time
 }
 
+type Email struct {
+	From     string
+	Host     string
+	Port     int
+	Username string
+	Password string
+}
+
+type ForgotPassword struct {
+	FrontUrl    string
+	ExpiredTime int
+}
+
 var ConfigJwt *Jwt
 var ConfigMysql *MySql
 var ConfigApp *App
+var ConfigEmail *Email
+var ConfigForgotPassword *ForgotPassword
 
 func ConfigInit() {
 	ConfigMysql = &MySql{
@@ -42,4 +57,18 @@ func ConfigInit() {
 		Key:     "jdsklafjie9wpasf019fa83032lfmp0283jasnf083743",
 		Expired: time.Now().Add(time.Minute * 360), //minutes
 	}
+
+	ConfigEmail = &Email{
+		From:     "forgotpassword@warungacehbangari.com",
+		Host:     "smtp.hostinger.com",
+		Port:     587, //465
+		Username: "forgotpassword@warungacehbangari.com",
+		Password: "qweasdzxc123!Q",
+	}
+
+	ConfigForgotPassword = &ForgotPassword{
+		FrontUrl:    "127.0.0.1:8000/url",
+		ExpiredTime: 10, //in minutes
+	}
+
 }

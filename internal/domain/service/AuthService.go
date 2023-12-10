@@ -27,7 +27,7 @@ func Register(req *request.RegisterRequest) interface{} {
 	var validationErrors []request.ErrorResponse
 	var user entities.User
 	err := repo.AuthRepository.GetUserByEmail(&user, req.Email)
-	if err != nil {
+	if err == nil {
 		var elem request.ErrorResponse
 		elem.FailedField = "Email"
 		elem.Tag = "Email already used"
@@ -36,7 +36,7 @@ func Register(req *request.RegisterRequest) interface{} {
 		res := response.ErrorResponse{
 			Success: false,
 			Message: "Validation Error",
-			Errors:  validationMessage,
+			Errors:  validationErrors,
 		}
 		return res
 	}
@@ -134,5 +134,70 @@ func PostForgotPassword(req *request.ForgotPassword) interface{} {
 		}
 		return res
 	}
-	return nil
+
+	//Check email
+	var user entities.User
+	repo := repository.NewAuthRepository(&repository.AuthMysql{})
+	if err := repo.AuthRepository.GetUserByEmail(&user, req.Email); err != nil {
+		return response.ErrorResponse{
+			Success: false,
+			Message: "Email not found",
+		}
+	}
+
+	//userChan := make(chan entities.User)
+	err := repo.AuthRepository.GenerateTokenForgotPassword(user)
+	if err != nil {
+		return response.ErrorResponse{
+			Success: false,
+			Message: err.Error(),
+			Errors:  err.Error(),
+		}
+	}
+
+	go func() {
+		//defer close(userChan)
+		//userChan <- user
+		err := repo.AuthRepository.SendEmailForgotPassword(user)
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+	//repo.AuthRepository.SendEmailForgotPassword(user)
+
+	return response.SuccessResponse{
+		Success: true,
+		Message: "Success Send Email",
+	}
+}
+
+func ResetPassword(req *request.ResetPasswordRequest) interface{} {
+	repo := repository.NewAuthRepository(&repository.AuthMysql{})
+	pass, validationMessage := utils.Validate(req)
+	if !pass {
+		res := response.ErrorResponse{
+			Success: false,
+			Message: "Validation Error",
+			Errors:  validationMessage,
+		}
+		return res
+	}
+
+	//Check Token
+	var user entities.User
+	err := repo.AuthRepository.UserFromToken(req.Token, &user)
+	if err != nil {
+		return response.ErrorResponse{
+			Success: false,
+			Message: err.Error(),
+			Errors:  err.Error(),
+		}
+	}
+	hashPassword, _ := utils.HashingPassword(req.Password)
+	err = repo.AuthRepository.ChangePassword(user, hashPassword)
+	return response.SuccessResponse{
+		Success: true,
+		Message: "Success reset password",
+		Data:    nil,
+	}
 }

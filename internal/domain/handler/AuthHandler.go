@@ -34,8 +34,27 @@ func (r *AuthHandler) Login(c *fiber.Ctx) error {
 
 func (r *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
 	req := new(request.ForgotPassword)
-	c.BodyParser(req)
+	if err := c.BodyParser(req); err != nil {
+		return c.JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Eror parsing data",
+			Errors:  nil,
+		})
+	}
 	output := service.PostForgotPassword(req)
 
+	return c.JSON(output)
+}
+
+func (r *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	req := new(request.ResetPasswordRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.JSON(response.ErrorResponse{
+			Success: false,
+			Message: "Error parsing data",
+			Errors:  err,
+		})
+	}
+	output := service.ResetPassword(req)
 	return c.JSON(output)
 }
